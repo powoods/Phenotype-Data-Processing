@@ -1,0 +1,43 @@
+###This is a Generic Script for Analyzing Phenotype Data that are based on either a One-Way (genotype factor only) or Two-Way ANOVA (genotype + condition) design###
+###Script can be modified depending on project's needs###
+
+##Load required r packages##
+library(emmeans)
+library(car)
+library(lme4)
+
+##Assuming a One - Way ANOVA Design (one factor design - genotype)##
+#fixed effect model for tests of significance#
+dataset <- read.csv(file.choose(), header=T) #read in your data assuming that it is organized into columns with correct headers such as Genotype | Replicate | Phenotype_1 | Phenotype_2| etc.
+str(dataset) #make sure that R is correctly reading the information in your dataset if not we need to make corrections
+dataset$Genotype <- as.factor(dataset$Genotype) #R often interprets genotype naems as characters and thus we explicitly tell R to interpret the genotype names as factors - this is required to perform one-way ANOVA analyses
+phenotype1_model <- lm(Phenotype_1 ~ Genotype, data = dataset) #Construct the fixed effect one - way ANOVA model for phenotype 1
+anova(phenotype1_model) #run the ANOVA test to generate tests of significances
+phenotype1_emmeans <- emmeans(phenotype1_model, pairwise ~ Genotype) #conduct Tukey - adjusted pairwise comparisons between each genotype to see which are statistically signifiant from each other (similar to conducting multiple T-tests with p-value correction)
+phenotype1_emmeans$emmeans #obtain the estimated means, standard errors and confidence intervals of Phenotype1 for each Genotype
+phenotype1_emmeans$contrasts $obtain the pairwise comparison estimates and significances to see which genotype significantly differ in Phenotype1
+boxplot(Phenotype1 ~ Genotype, data = dataset) #make a simple boxplot to visually compare Phenotype1 across all genotypes
+
+#random effect model for estimating phenotypic variance due to genotype (Broad Sense Heritability)#
+phenotype1_random_model <- lmer(Phenotype1 ~ (1|Genotype), data = dataset) #construct the random effect one - way ANOVA model
+summary(phenotype1_random_model) #obtain the variance estimates from the random effects one - way ANOVA model
+total_variance <- Residual_variance + Genotype_variance #calculate the total variance for Phenotype1
+Genotype_variance/total_variance * 100 #obtain the percent variance due to genotype. This is the Broad Sense Heritability for this trait.
+
+##Assuming a Two - Way ANOVA Design (two factors - genotype + condition)##
+#fixed effect model for tests of significances#
+dataset <- read.csv(file.choose(),header=T #read in your data assuming that it is organized into stacked data format with correct headers such as Genotype | Condition | Replicate | Phenotype_1 | Phenotype_2 | etc.
+str(dataset) #check to make sure R is intrepreting Genotype, Condition, and Replicate as a factor
+dataset$Genotype <- as.factor(dataset$Genotype) #if R is not interpreting the aforementioned parameters as factors, then convert them to factors
+phenotype1_model_gxe <- lm(Phenotype_1 ~ Genotype + Condition + Genotype*Condition, data = dataset) #construct the full fixed effect two-way ANOVA genotype-by-environment(condition) model
+Anova(phenotype1_model_gxe, type = "3") #perform a type 3 ANOVA on the model to test for parameter significances
+
+#random effect model for tests of significances#
+phenotype1_model_gxe_random <- lmer(Phenotype_1 ~ (1|Genotype) + (1|Condition) + (1|Genotype:Condition), data = dataset) #construct the full random effects two-way ANOVA genotype-by-environment(condition) model
+summary(phenotype1_model_gxe_random) #obtain the variance estimates due to Genotype, Condition, and their interaction (GxE)
+total_gxe_variance <- Residual_variance + Genotype_variance + Condition_variance + Genotype:Condition_variance #calculate the total variance for Phenotype_1 under the two-way ANOVA design
+Genotype_variance/total_gxe_variance * 100 #obtain variance due to genotype across conditions for Phenotype_1
+Condition_variance/total_gxe_variance * 100  #obtain variance due to condition across genotypes for Phenotype_1
+Genotype:Condition_variance/total_gxe_variance * 100  #obtain variance due to interaction between Genotype and Condition (gxe) for Phenotype_1
+
+#repeat these analyses for each phenotype present in study design#
